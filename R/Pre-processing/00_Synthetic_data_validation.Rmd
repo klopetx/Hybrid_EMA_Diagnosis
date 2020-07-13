@@ -1,0 +1,270 @@
+---
+title: "00_Synthetic _data_validation"
+author: "Kerman López de Calle Etxabe"
+date: "17/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+# Visual inspection of synthetised data
+
+This scripts displays the signals that are recreated by the model.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(factoextra)
+library(cowplot)
+
+load(here::here('Data', 'bigdata.Rdata'))
+
+
+source(here::here('R', 'Pre-processing', '00_Synthetic_data_validation_auxiliars.R'))
+
+```
+
+
+```{r}
+
+synthetic_files <- dir(here::here('Data', 'Synthetic_data'))
+
+synthetic_files <- synthetic_files [grep('.mat', synthetic_files)]
+
+parsed_files <- parse_mat_files(synthetic_files)
+
+parsed_files <- parsed_files[complete.cases(parsed_files),]
+
+formated_files <- lapply(parsed_files$Sourcefile, 
+                         FUN = read_n_add_meta_syn
+                         )
+
+formated_files <- do.call('rbind', formated_files)
+
+formated_files %<>% mutate(., Test_ID = 
+  case_when(
+      ViscousFR>0 &  StartSpalling >= 140 ~ 'lub',
+      StartSpalling <140 ~ 'point',
+      ViscousFR==0 &  StartSpalling >= 140 ~  'train'
+      )
+          ) %>% 
+group_by(Test_ID, Load, ViscousFR, SpallingFR) %>% 
+            mutate(., Degradation_stage = case_when(
+                                                      ViscousFR>0 ~ as.character(ViscousFR),
+                                                      SpallingFR>0 ~ as.character(SpallingFR),
+                                                      TRUE ~ '0'
+                                                      )
+            ) %>% 
+  ungroup()
+
+```
+
+
+## Loads
+
+The following figure depics the synthetic Current and Position error signals under different loads.
+
+
+```{r}
+
+load_big <- filter(bigdata, Test_ID == 'train', Motion == 'trapezoidal', Repetition == 1, Segment == 1 )
+
+re_pos_error_by_load <-  load_big %>%
+                            mutate(`Load [kg]` = factor(Load)) %>% 
+                            ggplot(., aes(STime, Pos_error, colour = `Load [kg]` )) +
+                                                  geom_line(size = 0.7, linetype = "dashed") +
+                                                  theme_minimal() + 
+                                                  xlab('Time [s]') +
+                                                  ylab('Position error [mm]') +
+                                                  theme(legend.position = 'none') +
+                                                  ylim(-5, 5)
+
+re_current_by_load <-  load_big %>%
+                            mutate(`Load [kg]` = factor(Load)) %>% 
+                            ggplot(., aes(STime, Current, colour = `Load [kg]` )) +
+                                                  geom_line(size = 0.7, linetype = "dashed") +
+                                                  theme_minimal() + 
+                                                  xlab('Time [s]') +
+                                                  ylab('Current [A]') +
+                                                  theme(legend.position = 'none') +
+                                                  ylim(0.2, 1.35)
+
+```
+
+
+```{r}
+
+
+
+current_by_load <- formated_files %>% 
+                      filter(Test_ID == 'train') %>% 
+                      ggplot(., aes(STime, Current, colour = factor(Load) )) +
+                      geom_line(size = 0.7, linetype = "dashed") +
+                      theme_minimal() + 
+                      xlab('Time [s]') +
+                      ylab('Current [A]') +
+                      ylim(0.2, 1.35)
+
+pos_error_by_load <- formated_files %>% 
+                      filter(Test_ID == 'train') %>% 
+                      mutate(`Load [kg]` = factor(Load)) %>% 
+                      ggplot(., aes(STime, Pos_error, colour = `Load [kg]` )) +
+                      geom_line(size = 0.7, linetype = "dashed") +
+                      theme_minimal() + 
+                      theme(legend.position = 'bottom') +
+                      xlab('Time [s]') + 
+                      ylab('Position error [mm]') +
+                      ylim(-5, 5)
+
+legenda <- get_legend(pos_error_by_load)
+
+load_effect <- cowplot::plot_grid(
+      cowplot::plot_grid( re_current_by_load,
+                          re_pos_error_by_load,
+                          current_by_load + theme(legend.position = 'none'), 
+                          pos_error_by_load + theme(legend.position = 'none'),
+                          ncol = 2,
+                          labels = c('a)', 'b)', 'c)', 'd)'),
+                          hjust = -3.05
+                    ),
+legenda,
+ncol = 1,
+rel_heights = c(1,0.15)
+)  
+  cowplot::save_plot(plot = load_effect, 
+                     filename = paste0(here::here('figures'), '/', 'syn_real_signals', '.png' ),
+                     dpi = 450,
+                     base_aspect_ratio = 2.3,
+                     bg= 'transparent'
+                     ) 
+
+load_effect
+```
+
+
+
+## Friction
+
+The following figure depics the lack of lubrication failure with increasing severity.
+
+```{r Friction values}
+
+
+
+fake_friction <- formated_files %>% 
+  filter((Test_ID == 'train' | Test_ID == 'lub'), Load == 20)
+
+fake_friction <- fake_friction %>% 
+  mutate(Test_ID = factor(Test_ID, labels = c('Friction', 'Nominal')),
+         ViscousFR = factor(ViscousFR, labels = c('','Very low', 'Low', 'Medium', 'High'))
+         )  
+
+
+friction_current <- ggplot( ) +
+                      geom_line(data = fake_friction, aes(STime, Current, colour = interaction(Test_ID, ViscousFR) ), linetype = "dashed") + 
+                      theme_minimal() +
+                      xlab('Time') +
+                      ylab('Current') +
+                      labs(color = "")
+
+
+    
+friction_poserror <- ggplot( ) +
+                        geom_line(data = fake_friction, aes(STime, Pos_error, colour = interaction(Test_ID, ViscousFR) ), linetype = "dashed")  +
+                        theme_minimal() + 
+                        xlab('Time') +
+                        ylab('Current') +
+                        labs(color = "") +
+                        theme(legend.position = 'bottom')
+                        
+
+legenda <- get_legend(friction_poserror)
+
+friction_fault <- cowplot::plot_grid(
+  cowplot::plot_grid(
+    {friction_current + theme(legend.position = 'none')},
+    {friction_poserror+ theme(legend.position = 'none')},
+    labels = c('a)', 'b)')
+                     ),
+  legenda, 
+ncol = 1,
+rel_heights = c(1, 0.1)
+
+  ) 
+
+    cowplot::save_plot(plot = friction_fault, 
+                     filename = paste0(here::here('figures'), '/', 'friction_fault_signal', '.png' ),
+                     dpi = 450,
+                     base_aspect_ratio = 2.3,
+                     bg= 'transparent'
+                     ) 
+friction_fault
+
+```
+
+
+
+## Spalling
+
+The following figure depics spalling failures with increasing severity.
+
+
+```{r}
+
+
+fake_spalling <- formated_files %>% 
+  filter((Test_ID == 'train' | Test_ID == 'point'), Load == 20) 
+  
+  
+fake_spalling <- fake_spalling %>% 
+                      mutate(Test_ID = factor(Test_ID, labels = c('Spalling', 'Nominal')),
+                             SpallingFR = factor(SpallingFR, labels = c('', 'Low', 'Medium', 'High'))
+                             )  
+
+current_spalling <-   ggplot(fake_spalling, aes(STime, Current, colour = interaction(Test_ID, SpallingFR) )) +
+                            geom_line(size = 0.55,linetype = "dashed") +
+                            theme_minimal() + 
+                            labs(color = "") +
+                            xlab('Time') +
+                            ylab('Current') +  
+                            theme(legend.position = 'bottom')
+
+poser_spalling <-   ggplot(fake_spalling, aes(STime, Pos_error, colour = interaction(Test_ID, SpallingFR) )) +
+                            geom_line(size = 0.55,linetype = "dashed") +
+                            theme_minimal() + 
+                            labs(color = "") +
+                            xlab('Time [s]') +
+                            ylab('Position error [mm]') +  
+                            theme(legend.position = 'bottom')
+
+legenda <- get_legend(poser_spalling)
+
+spalling_fault <- cowplot::plot_grid(
+      cowplot::plot_grid(
+        current_spalling + theme(legend.position = 'none'),
+        poser_spalling + theme(legend.position = 'none' ),
+      labels = c('a)', 'b)')
+                        ),
+      legenda,
+      ncol = 1,
+      rel_heights = c(1,0.1)
+                    ) 
+
+      cowplot::save_plot(plot = spalling_fault, 
+                     filename = paste0(here::here('figures'), '/', 'spalling_fault_signal', '.png' ),
+                     dpi = 450,
+                     base_aspect_ratio = 2.3,
+                     bg= 'transparent'
+                     ) 
+    
+      spalling_fault
+
+```
+

@@ -1,0 +1,147 @@
+---
+title: "01_Data_combination"
+author: "Kerman López de Calle Etxabe"
+date: "18/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+
+```
+
+# Data combination
+
+This script combines both data sources in a single dataset containing the indicators extracted from each segment.
+In the case of synthetic data, as there is only a single case per degradation stage, the dataset is augmented by taking the variability of the indicators of the real dataset for the same load case. Mean and deviation of the distribution are computed and new instances of synthetic data are created by adding uniformely distributed noise equal to the one found in the real nominal data.
+
+
+
+```{r message=FALSE, warning=FALSE}
+
+library(magrittr)
+library(dplyr)
+library(tidyr)
+
+
+load(here::here('Data', 'bigdata.Rdata'))
+
+source(here::here('R', 'Pre-processing', '00_Synthetic_data_validation_auxiliars.R'))
+
+
+```
+
+
+```{r Loading synthetic files, parsing them and adding severity columns and Test_ID}
+
+
+synthetic_files <- dir(here::here('Data', 'Synthetic_data'))
+
+synthetic_files <- synthetic_files [grep('.mat', synthetic_files)]
+
+parsed_files <- parse_mat_files(synthetic_files)
+
+parsed_files <- parsed_files[complete.cases(parsed_files),]
+
+formated_files <- lapply(parsed_files$Sourcefile, 
+                         FUN = read_n_add_meta_syn
+)
+
+formated_files <- do.call('rbind', formated_files)
+
+formated_files %<>% mutate(., Test_ID = 
+                             case_when(
+                               ViscousFR>0 &  StartSpalling >= 140 ~ 'lub',
+                               StartSpalling <140 ~ 'point',
+                               ViscousFR==0 &  StartSpalling >= 140 ~  'train'
+                             )
+) %>% 
+  group_by(Test_ID, Load, ViscousFR, SpallingFR) %>% 
+  mutate(., Degradation_stage = 
+           case_when(
+             ViscousFR>0 ~ as.character(ViscousFR),
+             SpallingFR>0 ~ as.character(SpallingFR),
+             TRUE ~ '0'
+           )
+  ) %>% 
+  ungroup()
+
+syn_meta <- formated_files %>% 
+  group_by(Test_ID, Load, ViscousFR, SpallingFR) %>% 
+  summarise(Degradation_stage = first(Degradation_stage), Sourcefile = first(Sourcefile) ) %>% 
+  ungroup() %>% 
+  select(-ViscousFR, -SpallingFR)
+
+```
+
+```{r Feature extraction and meta-data addition (Syn-files)}
+
+syn_descriptors <- formated_files %>% 
+  group_by(Sourcefile) %>% 
+  do(extract_features(.)) %>% 
+  ungroup()
+
+syn_descriptors <- merge(syn_meta, syn_descriptors, by = 'Sourcefile')
+
+
+
+```
+
+```{r Feature extraction (Real-files), warning=FALSE, message = FALSE}
+
+real_descriptors <- bigdata %>% 
+  filter(Motion == 'trapezoidal') %>% 
+  group_by(Test_ID, Motion, Degradation_stage, Load, Repetition, Segment) %>% 
+  do( extract_features(.)) %>% ungroup()
+
+real_descriptors <- real_descriptors[complete.cases(real_descriptors),]
+
+
+```
+
+```{r Load-wise noise addition}
+
+noisy_sym <- lapply(c(20,40, -40 ), FUN = add_noise_to_load, syn_data = syn_descriptors, real_data = real_descriptors)
+
+noisy_sym <- do.call('rbind', args = noisy_sym)
+
+```
+
+
+```{r Source column addition}
+
+noisy_sym$Origin <- 'Synthetic'
+noisy_sym$Degradation_stage <- as.numeric(noisy_sym$Degradation_stage)
+
+real_descriptors$Origin <- 'Real'
+
+
+```
+
+# Noise addition validation
+
+Visual results of the noise addition are available in the 01.1_Noise_addition_example.Rmd escript.
+
+# Extracted descriptors
+
+The descriptors that are extracted are depicted in the script 01.2_Extracted_descriptors.Rmd.
+
+
+```{r Data combination}
+
+descriptors <- dplyr::bind_rows(noisy_sym, real_descriptors) %>% select(-Motion)
+
+descriptors <- descriptors %>% filter(Test_ID != 'back' )
+
+```
+
+
+```{r Data storage}
+
+
+save(descriptors, file = here::here('Data', 'Processed_data', 'augmented_descriptors.Rdata'))
+
+
+```
+

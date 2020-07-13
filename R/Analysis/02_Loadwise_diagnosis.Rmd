@@ -364,7 +364,7 @@ final_features_n40_augmented <- get_metrics(predictions)
 
 ### 40 
 
-```{r Severe cases all loads final features}
+```{r Severe cases all loads final features L40}
 
 seed <- 666
 
@@ -396,7 +396,7 @@ final_features_40_severe <- get_metrics(predictions)
 
 ### 20
 
-```{r Severe cases all loads final features}
+```{r Severe cases all loads final features L20}
 
 seed <- 666
 
@@ -428,7 +428,7 @@ final_features_20_severe <- get_metrics(predictions)
 
 ### -40
 
-```{r Severe cases all loads final features}
+```{r Severe cases all loads final features L-40}
 
 seed <- 666
 
@@ -534,7 +534,7 @@ final_features_20_chronology
 
 ### -40
 
-```{r Chronology final features 20}
+```{r Chronology final features -40}
 
 seed <- 666
 

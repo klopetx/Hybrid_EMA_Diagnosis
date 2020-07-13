@@ -1,0 +1,293 @@
+---
+title: "01.2_Extracted descriptors"
+author: "Kerman López de Calle Etxabe"
+date: "20/2/2020"
+output: html_document
+---
+
+# Extracted descriptors
+
+The steps taken to extract descriptors are shown here visually.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r Data loading}
+
+load(here::here('Data', 'bigdata.Rdata'))
+
+```
+
+
+```{r warning=FALSE, message = FALSE}
+
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(cowplot)
+library(ggrepel)
+
+source(here::here('R', 'Pre-processing', '00_Synthetic_data_validation_auxiliars.R'))
+
+
+
+```
+
+## Original signals
+
+Originally there are three signals (Setpoint, Position error and Setpoint), each of them contain more than one repetition. However, during the downloading of the data an additional variable indicating the cycle has been added already.  
+
+```{r}
+
+trapezoids <- bigdata %>% filter(Test_ID=='train', Motion == 'trapezoidal', Load == 20, Repetition == 1, between(Segment, 1,2) ) 
+
+plot_grid(
+  ggplot(trapezoids, aes(Time, Current)) + geom_line() + theme_minimal(),
+  ggplot(trapezoids, aes(Time, Pos_error)) + geom_line() + theme_minimal(),
+  ggplot(trapezoids, aes(Time, Setpoint)) + geom_line() + theme_minimal()
+)
+
+segment <- bigdata %>% filter(Test_ID=='train', Motion == 'trapezoidal', Load == 20, Repetition == 1, Segment == 1 ) 
+
+```
+
+
+```{r}
+
+time_var = 'STime'
+
+segment_names <- names(segment)
+
+
+```
+
+```{r}
+
+segment %<>% 
+        mutate(Region = ifelse(Setpoint > 139 & between(STime, 5, 10), 'Extended',
+                               ifelse( (Setpoint>0 & Setpoint < 139) & c(0, diff(Setpoint))>0 & between(STime, 1,7), 'Extending',
+                                       ifelse( Setpoint < 21, 'Idling',
+                                       ifelse((Setpoint>0 & Setpoint < 139) & c(0, diff(Setpoint))<0 & between(STime, 9,15),'Retracting', 'Other'))
+                               ) )
+        ) 
+
+```
+
+## Dividing the cycle
+
+In order to segment each cycle in smaller processes (Extending, Retracting, Extended and Idling) Setpoint is used.
+
+```{r}
+
+p_seg_divide <- ggplot(segment, aes(STime, Setpoint, colour = Region )) +
+                  geom_point() +
+                  theme_minimal()
+
+p_seg_divide %>%  
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'setpoint_segmentation.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+
+  p_seg_divide
+
+```
+
+
+
+```{r Measuring indicators and position}
+
+
+segment_region_length <- sum(segment$Region == 'Retracting')
+
+n_two_third_tail <- round(segment_region_length*2/3) 
+n_first_quarter <- round(segment_region_length*1/4)
+
+ retraction <- segment %>% 
+                filter(Region == 'Retracting') %>% 
+                mutate(
+                  Idx = 1:n(), tail_two_thirds =  ifelse(Idx < (n() - n_two_third_tail), FALSE, TRUE)
+                  )
+ 
+ 
+ 
+ 
+ indicators  <- retraction %>% 
+                  describe(., return_location = TRUE)
+ 
+  
+```
+
+# Retraction
+
+With the previous division, it is possible to take the tail and the head of each sub-process and extract the descriptors. 
+
+```{r}
+
+p_ret_cur <-  ggplot() + 
+   geom_line(data = retraction, aes(Idx, Current , colour = tail_two_thirds)) +
+   geom_point(data = indicators, aes(w_max_current, max_current)) + 
+   geom_text_repel(data = indicators, aes(w_max_current, max_current, label = 'Max')) +
+   geom_point(data = indicators, aes(w_max_current, max_current)) +
+   geom_text_repel(data = indicators, aes(w_min_current, min_current, label = 'Min')) +
+   geom_point(data = indicators, aes(w_min_current, min_current)) +
+   geom_segment(aes(x = segment_region_length - n_two_third_tail, y = indicators$mean_current, xend = segment_region_length, yend = indicators$mean_current)) +
+  geom_text_repel(data = indicators, aes(segment_region_length -n_two_third_tail+3,mean_current + 0.075, label = 'Mean')) + 
+  geom_vline(xintercept = n_first_quarter, linetype = 'dashed' ) +
+  geom_point(data = indicators, aes(w_overshoot_current, overshoot_current)) +
+  geom_text_repel(data = indicators, aes(w_overshoot_current, overshoot_current, label = 'Overshoot')) +
+  geom_segment(aes(x = 75, y = indicators$min_current, xend = 75, yend = indicators$max_current), arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_segment(aes(x = 75, y = indicators$max_current, xend = 75, yend = indicators$min_current), arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_text_repel(data = indicators, aes(72, indicators$min_current-0.05, label = 'Peak value')) +
+  theme_minimal() + 
+  theme(legend.position = 'none') + 
+  xlab('')
+
+p_ret_cur
+
+```
+
+
+
+
+```{r}
+
+p_ret_pose <-  ggplot() + 
+   geom_line(data = retraction, aes(Idx, Pos_error , colour = tail_two_thirds)) +
+   geom_line(data = retraction[1:n_first_quarter,], aes(Idx, abs(Pos_error)), linetype = 'dashed')  + 
+   geom_point(data = indicators, aes(w_max_Pos_error, max_Pos_error)) + 
+   geom_text_repel(data = indicators, aes(w_max_Pos_error, max_Pos_error, label = 'Max')) +
+   geom_point(data = indicators, aes(w_max_Pos_error, max_Pos_error+0.05)) +
+   geom_text_repel(data = indicators, aes(w_min_Pos_error+2, min_Pos_error-0.05, label = 'Min')) +
+   geom_point(data = indicators, aes(w_min_Pos_error, min_Pos_error)) +
+   geom_segment(aes(x = segment_region_length -n_two_third_tail, y = indicators$mean_Pos_error, xend = segment_region_length, yend = indicators$mean_Pos_error)) + 
+  geom_text_repel(data = indicators, aes(segment_region_length -n_two_third_tail+3, mean_Pos_error + 0.1, label = 'Mean')) + 
+  geom_vline(xintercept = n_first_quarter, linetype = 'dashed' ) +
+  geom_point(data = indicators, aes(w_overshoot_Pos_error, overshoot_Pos_error)) +
+  geom_text_repel(data = indicators, aes(w_overshoot_Pos_error, overshoot_Pos_error, label = 'Overshoot')) +
+  geom_segment(aes(x = 60, y = indicators$min_Pos_error, xend = 60, yend = indicators$max_Pos_error), arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_segment(aes(x = 60, y = indicators$max_Pos_error, xend = 60, yend = indicators$min_Pos_error), arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_text_repel(data = indicators, aes(60, indicators$min_Pos_error-0.2, label = 'Peak value')) +
+  theme_minimal() + 
+  theme(legend.position = 'none') + 
+  ylab('Position error') +
+  xlab('')
+
+
+p_ret_pose
+
+
+```
+
+
+
+
+
+# Extension
+
+This process is repeated in extension too.
+
+```{r}
+
+segment_region_length <- sum(segment$Region == 'Extending')
+
+
+
+n_two_third_tail <- round(segment_region_length*2/3) 
+n_first_quarter <- round(segment_region_length*1/4)
+
+extension <- segment %>% 
+                filter(Region == 'Extending') %>% 
+                mutate(
+                  Idx = 1:n(), tail_two_thirds =  ifelse(Idx < (n() - n_two_third_tail  ), FALSE, TRUE)
+                  )
+ 
+ 
+
+ ext_indicators <- extension %>%
+                  describe(., return_location = TRUE)
+
+
+```
+
+```{r Current indicators in extension}
+
+p_ext_cur <-  ggplot() + 
+   geom_line(data = extension, aes(Idx, Current , colour = tail_two_thirds)) +
+   geom_point(data = ext_indicators, aes(w_max_current, max_current)) + 
+   geom_text_repel(data = ext_indicators, aes(w_max_current, max_current, label = 'Max')) +
+   geom_point(data = ext_indicators, aes(w_max_current, max_current)) +
+   geom_text_repel(data = ext_indicators, aes(w_min_current, min_current, label = 'Min')) +
+   geom_point(data = ext_indicators, aes(w_min_current, min_current)) +
+   geom_segment(aes(x = segment_region_length -n_two_third_tail   , y = ext_indicators$mean_current, xend = segment_region_length, yend = ext_indicators$mean_current)) + 
+  geom_text_repel(data = ext_indicators, aes(segment_region_length - n_two_third_tail + 5.5 , mean_current - 0.035 , label = 'Mean')) + 
+  geom_vline(xintercept = n_first_quarter, linetype = 'dashed' ) +
+  geom_point(data = ext_indicators, aes(w_overshoot_current, overshoot_current)) +
+  geom_text_repel(data = ext_indicators, aes(w_overshoot_current, overshoot_current, label = 'Overshoot')) +
+  geom_segment(aes(x = 75, y = ext_indicators$min_current, xend = 75, yend = ext_indicators$max_current), arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_segment(aes(x = 75, y = ext_indicators$max_current, xend = 75, yend = ext_indicators$min_current), arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_text_repel(data = ext_indicators, aes(72, ext_indicators$min_current-0.05, label = 'Peak value')) +
+  theme_minimal() + 
+  theme(legend.position = 'none') + 
+  xlab('')
+
+
+p_ext_cur
+
+```
+
+```{r Pos error indicators in extension}
+
+n_two_third_tail  <- round(segment_region_length*2/3) 
+n_first_quarter <- round(segment_region_length*1/4)
+
+p_ext_pos <-      ggplot() + 
+                     geom_line(data = extension, aes(Idx, Pos_error , colour = tail_two_thirds)) +
+                     geom_point(data = ext_indicators, aes(w_max_Pos_error, max_Pos_error)) + 
+                     geom_text_repel(data = ext_indicators, aes(w_max_Pos_error, max_Pos_error, label = 'Max')) +
+                     geom_point(data = ext_indicators, aes(w_max_Pos_error, max_Pos_error)) +
+                     geom_text_repel(data = ext_indicators, aes(w_min_Pos_error, min_Pos_error, label = 'Min')) +
+                     geom_point(data = ext_indicators, aes(w_min_Pos_error, min_Pos_error)) +
+                     geom_segment(aes(x = segment_region_length - n_two_third_tail   , y = ext_indicators$mean_Pos_error, xend = segment_region_length, yend = ext_indicators$mean_Pos_error)) + 
+                    geom_text_repel(data = ext_indicators, aes(segment_region_length - n_two_third_tail   +3, mean_Pos_error + 0.075, label = 'Mean')) + 
+                    geom_vline(xintercept = n_first_quarter, linetype = 'dashed' ) +
+                    geom_point(data = ext_indicators, aes(w_overshoot_Pos_error, overshoot_Pos_error)) +
+                    geom_text_repel(data = ext_indicators, aes(w_overshoot_Pos_error, overshoot_Pos_error, label = 'Overshoot')) +
+                    geom_segment(aes(x = 55, y = ext_indicators$min_Pos_error, xend = 55, yend = ext_indicators$max_Pos_error), arrow = arrow(length = unit(0.25, "cm"))) +
+                    geom_segment(aes(x = 55, y = ext_indicators$max_Pos_error, xend = 55, yend = ext_indicators$min_Pos_error), arrow = arrow(length = unit(0.25, "cm"))) +
+                    geom_text_repel(data = ext_indicators, aes(54, ext_indicators$min_Pos_error+1.45, label = 'Peak value')) +
+                    theme_minimal() + 
+                    theme(legend.position = 'none') + 
+                    xlab('') +
+                    ylab('Position error')
+
+p_ext_pos
+
+```
+
+
+# All descriptors
+
+
+
+```{r}
+
+combined_plots <- cowplot::plot_grid(p_ret_cur, p_ret_pose, p_ext_cur , p_ext_pos, ncol = 2) # , labels = c('a)', 'b)', 'c)', 'd)')
+combined_plots
+
+combined_plots %>% 
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'extracted_indicators.png'),
+                     dpi = 450,
+                     base_aspect_ratio = 2.7,
+                     bg = 'transparent'
+                     )
+
+
+```
+
+

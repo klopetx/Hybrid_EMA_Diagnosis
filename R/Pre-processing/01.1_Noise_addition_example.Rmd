@@ -1,0 +1,214 @@
+---
+title: "01.1_Noise_addition_example"
+author: "Kerman López de Calle Etxabe"
+date: "19/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE )
+```
+
+# Noise addition
+
+This script shows a visual example of how noise is added to synthetic data.
+
+```{r echo=FALSE, message=FALSE}
+
+library(magrittr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggrepel)
+library(ggforce)
+
+
+load(here::here('Data', 'bigdata.Rdata'))
+
+source(here::here('R', 'Pre-processing', '00_Synthetic_data_validation_auxiliars.R'))
+
+```
+
+
+```{r Loading synthetic files, parsing them and adding severity columns and Test_ID}
+
+
+synthetic_files <- dir(here::here('Data', 'Synthetic_data'))
+
+synthetic_files <- synthetic_files [grep('.mat', synthetic_files)]
+
+parsed_files <- parse_mat_files(synthetic_files)
+
+parsed_files <- parsed_files[complete.cases(parsed_files),]
+
+formated_files <- lapply(parsed_files$Sourcefile, 
+                         FUN = read_n_add_meta_syn
+)
+
+formated_files <- do.call('rbind', formated_files)
+
+formated_files %<>% mutate(., Test_ID = 
+                             case_when(
+                               ViscousFR>0 &  StartSpalling >= 140 ~ 'lub',
+                               StartSpalling <140 ~ 'point',
+                               ViscousFR==0 &  StartSpalling >= 140 ~  'train'
+                             )
+) %>% 
+  group_by(Test_ID, Load, ViscousFR, SpallingFR) %>% 
+  mutate(., Degradation_stage = 
+           case_when(
+             ViscousFR>0 ~ as.character(ViscousFR),
+             SpallingFR>0 ~ as.character(SpallingFR),
+             TRUE ~ '0'
+           )
+  ) %>% 
+  ungroup()
+
+syn_meta <- formated_files %>% 
+  group_by(Test_ID, Load, ViscousFR, SpallingFR) %>% 
+  summarise(Degradation_stage = first(Degradation_stage), Sourcefile = first(Sourcefile) ) %>% 
+  ungroup() %>% 
+  select(-ViscousFR, -SpallingFR)
+
+```
+
+```{r Feature extraction and meta-data addition (Syn-files)}
+
+syn_descriptors <- formated_files %>% 
+  group_by(Sourcefile) %>% 
+  do(extract_features(.)) %>% 
+  ungroup()
+
+syn_descriptors <- merge(syn_meta, syn_descriptors, by = 'Sourcefile')
+
+
+
+```
+
+```{r Feature extraction (Real-files), message=FALSE, warning=FALSE}
+
+real_descriptors <- bigdata %>% 
+  filter(Motion == 'trapezoidal') %>% 
+  group_by(Test_ID, Motion, Degradation_stage, Load, Repetition, Segment) %>% 
+  do( extract_features(.)) %>% ungroup()
+
+real_descriptors <- real_descriptors[complete.cases(real_descriptors),]
+
+
+```
+
+```{r Noise addition}
+
+new_observations <- 50
+
+syn_data <- syn_descriptors %>% filter(Load ==20)
+
+real_data <- real_descriptors %>% filter(Load == 20, Test_ID == 'train' )
+
+real_feature_sd <- real_data %>% select_if(is.numeric) %>% select(-one_of(c( "Degradation_stage", "Load", "Repetition", "Segment"))) %>% 
+    apply(.,
+          2,
+          sd,
+          na.rm = TRUE
+    )
+  set.seed(100)
+  
+  syn_features <- syn_data %>% select_if(is.numeric) %>% select(-one_of(c( "Degradation_stage", "Load")))
+  
+  meta_syn_features <- select(syn_data, Sourcefile, Test_ID, Load, Degradation_stage)
+  
+  stopifnot(names(syn_features) == names(real_feature_sd))
+  
+  
+  
+  noisyn_data <- generate_noisy_data( syn_features,  real_feature_sd , new_observations)
+  
+  meta_noisyn <- rep_meta(syn_data, c('Degradation_stage', 'Load', 'Test_ID'), new_observations = new_observations )
+  
+  nosyn_data <- cbind(meta_noisyn, noisyn_data)
+
+
+
+```
+
+
+```{r}
+
+PCs <- 2 
+
+pca_real_data <- real_data %>% 
+                  select_if(is.numeric) %>%
+                  select(-one_of(c( "Degradation_stage", "Load", "Repetition", "Segment"))) %>% 
+                  prcomp(., center = TRUE, scale. = TRUE, rank. = PCs )
+
+
+syn_features <- select(syn_features, one_of(attributes(pca_real_data$center)$names))
+
+pca_syn <- predict(pca_real_data, newdata = syn_features) %>% as.data.frame()
+
+pca_real_x <- as.data.frame(pca_real_data$x) 
+
+meta_syn_features$Severity <- c('Nominal', 'Spalling Low', 'Spalling Medium', 'Spalling High', 'Friction Medium', 'Friction Very Low',   'Friction High', 'Friction Low')
+
+syn_real_plot <- ggplot() +
+                    geom_point(data = pca_real_x, aes(PC1, PC2, colour = 'Real'), size = 2 ) + 
+                    geom_point(data = pca_syn, aes(PC1, PC2, colour = 'Synthetic Original'), size = 2) +
+                    geom_text_repel(data = cbind(pca_syn,meta_syn_features), aes(PC1, PC2, label = Severity), box.padding = unit(0.5, "lines")) +
+                    # geom_ellipse(aes(x0 = 2.35, y0 = 0.25, a = 7.25, b = 1.5, angle = 0), fill = '#1b9e77', size = 0.25, alpha = 0.25  ) +
+                    geom_text_repel(data = as.data.frame(list(X = 5, Y = -1.25, Severity = 'Nominal' )), aes(X,Y, label = Severity), box.padding = unit(0.5, "lines")) +
+                    theme_minimal() +
+                    scale_y_continuous(limits = c(-2,7)) +
+                    scale_x_continuous(limits = c(-7,10)) +
+                    scale_color_manual(values = c("#1b9e77",  "#7570b3" )) +
+                    theme(legend.position = 'none')
+          
+
+
+noisyn_features <- select(noisyn_data, one_of(attributes(pca_real_data$center)$names))
+
+pca_noisyn <- predict(pca_real_data, newdata = noisyn_features) %>% as.data.frame()
+
+
+augmented_plot <-   ggplot() +
+                        geom_point(data = pca_real_x, aes(PC1, PC2, colour = 'Real'), size = 2) + 
+                        geom_point(data = pca_syn, aes(PC1, PC2, colour = 'Synthetic from model'), size = 2) +
+                        geom_point(data = pca_noisyn, aes(PC1, PC2, colour = 'Synthetic augmented'), size = 1.75, alpha = 0.65) +
+                        theme_minimal() +
+                        scale_y_continuous(limits = c(-2,7)) +
+                        scale_x_continuous(limits = c(-7,10)) +
+                        scale_color_manual(values = c("#1b9e77", "#d95f02", "#7570b3" ), name = 'Data origin') 
+
+legenda <- cowplot::get_legend(augmented_plot + theme(legend.position = 'bottom'))
+
+cowplot::plot_grid(
+cowplot::plot_grid(
+syn_real_plot  ,
+augmented_plot  + theme(legend.position = 'none'),
+labels = c('a)', 'b)')
+),
+legenda,
+ncol = 1,
+rel_heights = c(1,0.075)
+) %>% 
+  cowplot::save_plot(plot = ., 
+                     filename = paste0(here::here('figures'), '/', 'noise_addition', '.png' ),
+                     dpi = 450,
+                     base_aspect_ratio = 2.3,
+                     bg= 'transparent'
+                     ) 
+
+
+```
+
+
+```{r Source column addition}
+
+noisy_sym$Origin <- 'Synthetic'
+noisy_sym$Degradation_stage <- as.numeric(noisy_sym$Degradation_stage)
+
+real_descriptors$Origin <- 'Real'
+
+descriptors <- dplyr::bind_rows(noisy_sym, real_descriptors) %>% select(-Motion)
+
+```
+

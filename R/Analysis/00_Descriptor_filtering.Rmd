@@ -1,0 +1,225 @@
+---
+title: "00. Descriptor filtering"
+author: "Kerman López de Calle Etxabe"
+date: "12/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+```{r message=FALSE, warning=FALSE}
+
+library(magrittr)
+library(dplyr)
+library(plotly)
+library(factoextra)
+
+
+source(here::here('R', 'Analysis', 'aux_predictions.R'))
+source(here::here('R', 'Analysis', 'aux_experiments.R'))
+source(here::here('R', 'Analysis', 'aux_metrics.R'))
+
+```
+
+
+```{r}
+
+load(here::here('Data', 'Processed_data', 'augmented_descriptors.Rdata'))
+
+```
+
+
+```{r}
+
+useless_vars  <- c('Degradation_stage', 'Load', 'Test_ID', 'Origin', 'Segment', 'Repetition')
+
+```
+
+
+
+# Descriptor filtering
+
+
+Once the indicators have been extracted from the Current and Position signals, it is time to combine the indicators from both sources, the physical model and the real data. However, even if the physical model is supposed to be identical to the real rig there are slight differences in the indicators. Therefore, it is necessary to remove first the indicators that do not correspond. 
+
+Here we show the methodology we have used for doing so:
+
+0. Create two datasets: 
+  a) Nominals: Contains data from both sources (Synthetic and real) but only data taken under nominal conditions (no faults).
+  b) Damaged synthetics: Contains only synthetic data, and also includes faulty conditions.
+
+1. For each dataset: 
+  a) Split in train test randomly (%66 / %33)
+  b) Scale and center using train mean and sd values.
+
+2. Use LDA algorithm over Nominal dataset in a binary classification problem (Real/Synthetic) compute accuracy, kappa and store ranking of variables that separate both classes the most
+
+3. Use the LDA for classification of faults in damaged dataset, store accuracy and kappa.
+
+4. Remove the most valuable feature (from step 3).
+
+5. Iterate steps 3 to 5 until only to features are left.
+
+# Step 0
+
+
+
+
+
+
+```{r}
+
+seed <- 666
+
+class_var <- 'Origin'
+
+train_idx <- with(descriptors, (Test_ID == 'train') )
+
+test_idx <- with(descriptors, (Test_ID == 'train') )
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = NULL, remove_vars = useless_vars , show_validity = TRUE)
+
+
+data_origin <- create_experiment(seed, train_test = train_test, remove_vars = useless_vars , target_var = class_var, scale_data = TRUE,train_prop = 0.60)
+
+
+```
+
+
+
+
+
+```{r}
+
+seed <- 666
+
+class_var <- 'Test_ID'
+
+train_idx <- with(descriptors, (Origin == 'Synthetic') )
+
+test_idx <- with(descriptors, (Origin == 'Synthetic') )
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = NULL, remove_vars = useless_vars , show_validity = TRUE)
+
+
+data_testid <- create_experiment(seed, train_test = train_test, remove_vars = useless_vars , target_var = class_var, scale_data = TRUE,train_prop = 0.60)
+
+
+
+
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE}
+# Loop
+
+
+
+initial_features <- ncol(data_origin$train_x)
+
+iterations <- initial_features - 1
+
+memory <- data.frame(matrix(ncol = 8, nrow = iterations)) %>% setNames(c('Iteration', 'n_Features', 'Deleted_feature', 'ACC_origin', 'Kappa_origin', 'ACC_fault', 'Kappa_fault', 'Feature_set'))
+
+for(iteration in seq(iterations)) {
+  
+  
+  origin_res <- predict_lda(experimentation = data_origin, useless_vars = useless_vars)
+  
+  fault_res <- predict_lda(experimentation = data_testid, useless_vars = useless_vars)
+
+  used_vars <- paste(names(data_origin$train_x)[!names(data_origin$train_x) %in% useless_vars], collapse = ';'   )
+  
+useless_vars <- c(useless_vars, origin_res$worst_var)
+
+ 
+    
+
+memory[iteration,] <- c(iteration, 
+                        initial_features-iteration+1,
+                        origin_res$worst_var,
+                        origin_res$ACC,
+                        origin_res$cohen_kappa,
+                        fault_res$ACC,
+                        fault_res$cohen_kappa,
+                        used_vars) 
+
+}
+
+
+```
+
+```{r Result plotting}
+
+final_iteration <- 16
+
+feat_fitering_metrics   <-  memory %>% 
+                        tidyr::gather(., key = 'Metric', value = 'Value',  ACC_origin, ACC_fault, Kappa_origin, Kappa_fault) %>% 
+                        mutate(Value = as.numeric(Value), Iteration = as.numeric(Iteration)) %>% 
+                        ggplot(., aes(Iteration, Value, color= Metric )) + 
+                        geom_point() + 
+                        geom_line() +
+                        geom_vline(xintercept = final_iteration, linetype = "dashed") + 
+                        theme_minimal()
+
+feat_fitering_metrics
+
+```
+
+
+Our aim is the retain a set of features that will classify correctly while there will be little difference from these features in the synthetic and original datasets.
+
+According to the previous plot, 15th or 16th iteratioin would be interesting points, as the algorithms already lose quite a lot their capability to distinguish between original and synthetic data (therefore, the features left are quite similar) while the fault detection cappability has not started to drop yet.
+
+We can see how the removal of the features affects the data with a PCA plot.
+
+```{r}
+# Initial data with all features
+
+pca_initial <- data_origin$train_x %>%  
+                  prcomp(., center = FALSE, scale. = FALSE)
+
+# Data at iteration 15
+
+final_features <- unlist(strsplit(x = memory[final_iteration, 'Feature_set'], spli = ';'))
+
+
+pca_final <- data_origin$train_x %>% 
+                  select(final_features)  %>% 
+                  prcomp(., center = FALSE, scale. = FALSE)
+
+
+plt_pca_init <-  factoextra::fviz_pca_ind(pca_initial, geom = 'point', col.ind = data_origin$train_y[,1], , invisible = 'quali', title = 'PCA original feature set')
+
+plt_pca_fin <-factoextra::fviz_pca_ind(pca_final, geom = 'point', col.ind = data_origin$train_y[,1], , invisible = 'quali', title = 'PCA reduced feature set')
+
+pre_post_fitering_pca <- cowplot::plot_grid(
+            cowplot::plot_grid(
+              plt_pca_init + theme(legend.position = 'none'),
+              plt_pca_fin + theme(legend.position = 'none')
+            ), 
+            cowplot::get_legend(plt_pca_init + theme(legend.position = 'bottom')),
+            ncol = 1,
+            rel_heights = c(1,0.1)
+            )
+
+pre_post_fitering_pca
+
+
+```
+
+
+
+
+```{r Final feature set}
+
+save(final_features, file = here::here('Data', 'filtered_features.Rdata') )
+
+```
+

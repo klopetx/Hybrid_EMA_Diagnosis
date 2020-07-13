@@ -1,0 +1,301 @@
+---
+title: "03. Context detection"
+author: "Kerman López de Calle Etxabe"
+date: "12/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+
+```{r message=FALSE}
+
+library(magrittr)
+library(dplyr)
+library(factoextra)
+
+source(here::here('R', 'Analysis', 'aux_experiments.R'))
+source(here::here('R', 'Analysis', 'aux_metrics.R'))
+source(here::here('R', 'Analysis', 'aux_predictions.R'))
+
+```
+
+
+```{r}
+
+load(here::here('Data', 'Processed_data', 'augmented_descriptors.Rdata'))
+load(here::here('Data', 'filtered_features.Rdata'))
+
+
+meta_vars <- c('Degradation_stage', 'Load', 'Test_ID', 'Origin', 'Segment', 'Repetition')
+
+```
+
+
+# Context influence in prediction
+
+In the previous Baseline analysis the effect of using records taken under different loads has been detected. In this analysis this is proven again and the 
+
+```{r , message=FALSE, warning=FALSE}
+
+seed <- 666
+
+Load_value <- c(40, 20, -40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Load', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+all_features_load_predict <- get_metrics(predictions)
+
+initial_prediction  <- all_features_load_predict$ACC
+
+
+```
+
+
+
+
+
+## PCA for dimensionality reduction
+
+In attempt to increse accuraccy, PCA algorithm is used to reduce the dimensionality of the dataset.
+
+```{r PCA projected vars}
+
+
+train_x <- train_test$train %>% select(-one_of(meta_vars))
+test_x <- train_test$test %>% select(-one_of(meta_vars))
+
+
+pca_x <- prcomp(x = train_x, center = TRUE, scale = TRUE )
+
+fviz_eig(pca_x, addlabels = TRUE, ncp = 20)
+
+get_eigenvalue(pca_x)
+
+```
+
+According to the explained variance, it is decide to keep the first 3 principal components, as they contain above 90% of the variance.
+
+
+
+```{r}
+
+retained_PCs <- 4
+
+train_pca_x <- pca_x$x[,1:retained_PCs]
+
+test_pca_x <- predict(newdata = test_x, pca_x)[,1:retained_PCs]
+
+train_test$train <- cbind(train_pca_x, select(train_test$train, one_of(meta_vars)  ))
+train_test$test <- cbind(test_pca_x, select(train_test$test, one_of(meta_vars)  ))
+                           
+
+```
+
+According to the explained variance, it is decide to keep the first `r retained_PCs` principal components, as they contain above 90% of the variance.
+
+
+
+```{r , message=FALSE, warning=FALSE}
+
+seed <- 666
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Load', 
+                     scale_data = FALSE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+pca_prediction  <- get_metrics(predictions)$ACC
+
+pca_prediction
+
+
+```
+
+
+
+
+
+# Unseen data
+
+We repeat now the procedure, but using only synthetic data to detect any different operating context of data coming from the real use case.
+
+
+```{r Only synthetic records, message=FALSE, warning=FALSE}
+
+
+
+seed <- 666
+
+Load_value <- c(40, 20, -40)
+
+train_idx <- with(descriptors, Origin == 'Synthetic' & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & (Origin == 'Real'))
+
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Load', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+all_features_load_predict <- get_metrics(predictions)
+
+unseen_prediction  <- all_features_load_predict$ACC
+
+unseen_prediction
+
+
+```
+
+
+
+## PCA for dimensionality reduction
+
+In attempt to increse accuraccy, PCA algorithm is used to reduce the dimensionality of the dataset.
+
+```{r PCA projected vars 2}
+
+
+train_x <- train_test$train %>% select(-one_of(meta_vars))
+test_x <- train_test$test %>% select(-one_of(meta_vars))
+
+
+pca_x <- prcomp(x = train_x, center = TRUE, scale = TRUE )
+
+fviz_eig(pca_x, addlabels = TRUE, ncp = 20)
+
+get_eigenvalue(pca_x)
+
+
+```
+
+
+
+According to the explained variance, it is decide to keep the first 4 principal components, as they contain above 90% of the variance.
+
+```{r}
+
+retained_PCs <- 4
+
+train_pca_x <- pca_x$x[,1:retained_PCs]
+
+test_pca_x <- predict(newdata = test_x, pca_x)[,1:retained_PCs]
+
+train_test$train <- cbind(train_pca_x, select(train_test$train, one_of(meta_vars)  ))
+train_test$test <- cbind(test_pca_x, select(train_test$test, one_of(meta_vars)  ))
+                           
+
+```
+
+
+
+```{r , message=FALSE, warning=FALSE}
+
+seed <- 666
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Load', 
+                     scale_data = FALSE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+unseen_pca_prediction <- get_metrics(predictions)$ACC
+
+```
+
+# Results
+
+
+```{r}
+
+result_table <- rbind(
+initial_prediction,
+pca_prediction,
+unseen_prediction,
+unseen_pca_prediction)
+
+result_table %>% 
+  apply(., 1, mean)
+
+
+```
+
+
+```{r}
+
+context_detction_acc <- t(result_table) %>% 
+  as.data.frame() %>% 
+  tidyr::gather(., key = 'Test', 'value') %>% 
+  mutate(Test = forcats::fct_relevel(Test,   c("initial_prediction",    "pca_prediction",     "unseen_prediction","unseen_pca_prediction")   ) ) %>% 
+  mutate(Test = forcats::fct_recode(Test, `W/ Real nominal` = 'initial_prediction', `W/ Real nominal W/ PCA` = 'pca_prediction', `W/O Real nominal` = 'unseen_prediction', `W/O Real nominal W/ PCA` = 'unseen_pca_prediction')) %>%
+  ggplot(., aes(y = value, fill = Test)) + 
+  geom_boxplot() +
+  theme_minimal() +
+  theme(axis.text.x = element_blank()) +
+  ylab('Accuracy') + 
+  scale_fill_brewer(palette="PuOr")
+
+
+context_detction_acc
+
+context_detction_acc %>% 
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'context_detection_boxplot_acc.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+
+
+
+```
+
+
+

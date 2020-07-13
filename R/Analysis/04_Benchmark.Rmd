@@ -1,0 +1,383 @@
+---
+title: "04. Benchmark"
+author: "Kerman López de Calle"
+date: "1/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+
+```
+
+```{r}
+
+load(here::here('Data', 'Processed_data', 'augmented_descriptors.Rdata'))
+load(here::here('Data', 'filtered_features.Rdata'))
+
+source(here::here('R', 'Analysis', 'aux_predictions.R'))
+source(here::here('R', 'Analysis', 'aux_experiments.R'))
+source(here::here('R', 'Analysis', 'aux_metrics.R'))
+
+```
+
+
+
+```{r}
+
+meta_vars  <- c('Degradation_stage', 'Load', 'Test_ID', 'Origin', 'Segment', 'Repetition')
+
+seed <- 666
+
+Load_value <- c(40, 20)
+
+```
+
+
+# Baseline
+
+What is an acceptable Kappa value for the diagnosis algorithm?
+
+## 3 labels (Spalling / Lubrication / Nominal)
+
+
+```{r}
+
+case1 <- matrix(c(400,0,50,0,100,0,0,0,0), ncol = 3, byrow = TRUE) # Every fault categorised as spalling
+case1
+
+Kappa(case1) # Every fault categorised as spalling
+
+
+
+
+```
+
+## 2 labels (Spalling / Lubrication)
+
+
+```{r}
+
+case2 <- matrix(c(400,0,100,0), ncol = 2, byrow = TRUE) # Every fault categorised as spalling
+case2
+
+Kappa(case2) # Every fault categorised as spalling
+
+sum(diag(case2) )/sum(case2)
+
+```
+
+
+```{r}
+
+case3 <- matrix(c(400,0,25,75), ncol = 2, byrow = TRUE) # Half lubrication as spalling
+case3
+
+Kappa(case3) # Every fault categorised as spalling
+
+
+
+```
+
+```{r}
+
+simulate_missclassification <- function(miss_lub_prop, lub = 100, point = 400){
+  
+Kappa(matrix(c(400,0, lub*miss_lub_prop,lub*(1-miss_lub_prop)), ncol = 2, byrow = TRUE))
+  
+}
+
+sapply(c(0.03, 0.05, 0.15, 0.25), FUN = simulate_missclassification)
+
+
+
+
+
+```
+
+# Real data using chronology with all loads and filtered features
+
+
+```{r}
+
+
+
+train_idx <- with(descriptors, Origin == 'Real' & Load %in% Load_value )
+
+test_idx <- with(descriptors, Origin == 'Real' & Load %in% Load_value )
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75, 
+                     grouping_vars = meta_vars)
+
+# With chronology 
+
+predictions <- lapply(experiments, predict_lda)
+
+R_f_f_L4020 <- get_metrics(predictions)
+
+R_f_f_L4020$cohen_Kappa %>% mean()
+
+# With chronology
+
+predictions <- lapply(experiments, predict_majority_lda)
+
+R_f_f_L4020_chronology <- get_metrics(predictions)
+
+R_f_f_L4020_chronology$cohen_Kappa %>% mean()
+
+```
+
+
+
+# Synthetic data and nominal real cases using chronology with all loads and filtered features
+
+
+```{r}
+
+
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID =='train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Origin == 'Real' & Load %in% Load_value )
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75, 
+                     grouping_vars = meta_vars)
+
+predictions <- lapply(experiments, predict_lda)
+
+S_f_f_L4020 <- get_metrics(predictions)
+
+S_f_f_L4020$cohen_Kappa %>% mean()
+
+predictions <- lapply(experiments, predict_majority_lda)
+
+S_f_f_L4020_chronology <- get_metrics(predictions)
+
+S_f_f_L4020_chronology $cohen_Kappa %>% mean()
+
+```
+
+
+# Real data binary with all loads and filtered features
+
+
+```{r}
+
+
+
+train_idx <- with(descriptors, Origin == 'Real' & Load %in% Load_value & Test_ID %in% c('lub', 'point') )
+
+test_idx <- with(descriptors, Origin == 'Real' & Load %in% Load_value & Test_ID %in% c('lub', 'point'))
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75, 
+                     grouping_vars = meta_vars)
+
+
+predictions <- lapply(experiments, predict_lda)
+
+R_f_f_L4020_binary <- get_metrics(predictions)
+
+R_f_f_L4020_binary$cohen_Kappa %>% mean()
+
+# Chronology
+
+predictions <- lapply(experiments, predict_lda)
+
+R_f_f_L4020_binary_chronology <- get_metrics(predictions)
+
+R_f_f_L4020_binary_chronology$cohen_Kappa %>% mean()
+
+```
+
+# Syn data real nominal binary with all loads and filtered features
+
+```{r}
+
+train_idx <- with(descriptors, Origin == 'Synthetic' & Load %in% Load_value & (Test_ID %in% c('lub', 'point')))
+
+test_idx <- with(descriptors, Origin == 'Real' & Load %in% Load_value & (Test_ID %in% c('lub', 'point')) )
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75, 
+                     grouping_vars = meta_vars)
+
+
+
+predictions <- lapply(experiments, predict_lda)
+
+S_f_f_L4020_binary <- get_metrics(predictions)
+
+S_f_f_L4020_binary$cohen_Kappa %>% mean()
+
+# Chronology
+
+predictions <- lapply(experiments, predict_majority_lda)
+
+S_f_f_L4020_binary_chronology <- get_metrics(predictions)
+
+S_f_f_L4020_binary_chronology$cohen_Kappa %>% mean()
+
+
+```
+# Graphs
+
+```{r}
+
+multilabel_kappa <- rbind(
+                        R_f_f_L4020$cohen_Kappa,
+                        R_f_f_L4020_chronology$cohen_Kappa,
+                        S_f_f_L4020$cohen_Kappa,
+                        S_f_f_L4020_chronology$cohen_Kappa
+                          )
+
+
+binary_kappa <- rbind(
+                        R_f_f_L4020_binary$cohen_Kappa,
+                        R_f_f_L4020_binary_chronology$cohen_Kappa,
+                        S_f_f_L4020_binary$cohen_Kappa,   
+                        S_f_f_L4020_binary_chronology$cohen_Kappa
+                        )
+
+```
+
+### Faults together
+
+```{r }
+
+multilabel_k <- t(multilabel_kappa) %>% 
+  as.data.frame() %>% 
+  tidyr::gather(., key = 'Test', 'value') %>% 
+  mutate(Test = forcats::fct_relevel(Test,   paste('V', 1:4, sep = '')   ) ) %>% 
+  mutate(Test = forcats::fct_recode(Test,   "Real data" = 'V1', "Real data \nusing \nchronology" = 'V2', "Synthetic" = 'V3', "Synthetic \nusing \nchronology" = 'V4') ) %>% 
+  ggplot(., aes(x= Test, y = value)) + 
+  geom_boxplot() +
+  geom_hline(yintercept = Kappa(case1), color = 'red', linetype = 'dashed') +
+  theme_minimal() +
+  ylab('Kappa') +
+  xlab('') +
+  annotate(geom = 'text', x = 3.2, y = 0.715, label = '\"All-Spalling\"\n scenario', color = 'red', fill = 'red', size = 3) +
+  scale_y_continuous(limits=c(0.5, 0.8)) +
+  coord_flip()
+  
+
+multilabel_k
+
+
+multilabel_k %>% 
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'benchmark_multilabel_boxplot_kappa.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+
+```
+
+```{r}
+
+prop_missclasified <- c(0.03, 0.05, 0.15, 0.25)
+resulting_kappa <- sapply(prop_missclasified, FUN = simulate_missclassification)
+grouping_var <- 1:length(prop_missclasified)
+text_label <- paste0(prop_missclasified*100, '%')
+
+baseline_table <- data.frame(prop_missclasified,  resulting_kappa, grouping_var, text_label )
+
+binary_k <- t(binary_kappa) %>% 
+  as.data.frame() %>% 
+  tidyr::gather(., key = 'Test', 'value') %>% 
+  mutate(Test = forcats::fct_relevel(Test,   paste('V', 1:4, sep = '')   ) ) %>% 
+  mutate(Test = forcats::fct_recode(Test,   "Real data" = 'V1', "Real data \nusing \nchronology" = 'V2', "Synthetic" = 'V3', "Synthetic \nusing \nchronology" = 'V4') ) %>% 
+  {ggplot() + 
+  geom_boxplot(data = ., aes(x= Test, y = value)) +
+  geom_hline(baseline_table, yintercept = resulting_kappa, color = 'red', linetype = 'dashed' ) +
+  geom_text(data = baseline_table, aes(x = 1.2, y = resulting_kappa-0.005 , label = text_label, color = 'red', fill = 'red'), size = 3 ) +
+  theme_minimal() +
+  ylab('Kappa') +
+  scale_y_continuous(limits=c(0.8, 1.00)) +
+      xlab('') +
+      theme(legend.position = 'none') +
+      coord_flip()
+  }
+  
+
+binary_k$layers <- c(binary_k$layers, binary_k$layers[[1]])
+binary_k
+
+binary_k %>% 
+    cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'benchmark_binary_boxplot_kappa.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+
+```
+
+
+```{r}
+
+multi_binary_combined <- cowplot::plot_grid(
+                                             multilabel_k,
+                                             binary_k + theme(axis.text.y = element_blank()),
+                                             labels = c("a)", "b)")
+                                            ) 
+
+multi_binary_combined
+
+multi_binary_combined %>% 
+      cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'benchmark_combined_boxplot_kappa.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+
+```
+

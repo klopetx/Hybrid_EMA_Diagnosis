@@ -1,0 +1,673 @@
+---
+title: "02. Lodwise diagnosis"
+author: "Kerman López de Calle"
+date: "30/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r Dependency loading, message=FALSE, warning=FALSE }
+
+library(magrittr)
+library(dplyr)
+library(factoextra)
+
+source(here::here('R', 'Analysis', 'aux_predictions.R'))
+source(here::here('R', 'Analysis', 'aux_experiments.R'))
+source(here::here('R', 'Analysis', 'aux_metrics.R'))
+
+
+```
+
+
+```{r Data loading}
+
+load(here::here('Data', 'Processed_data', 'augmented_descriptors.Rdata'))
+load(here::here('Data', 'filtered_features.Rdata'))
+
+meta_vars <- c('Degradation_stage', 'Load', 'Test_ID', 'Origin', 'Segment', 'Repetition')
+
+```
+
+
+
+# Loadwise 
+
+## All features 
+
+### 40 
+
+```{r All features L 40}
+
+seed <- 666
+
+Load_value <- c(40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = NULL, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+all_features_40 <- get_metrics(predictions)
+
+```
+
+### 20 
+
+```{r All features L 20}
+
+seed <- 666
+
+Load_value <- c(20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = NULL, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+all_features_20 <- get_metrics(predictions)
+
+```
+
+### -40
+
+```{r All features L -40}
+
+seed <- 666
+
+Load_value <- c(20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = NULL, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+all_features_n40 <- get_metrics(predictions)
+
+```
+
+## Final features
+
+### 40
+
+```{r Final features L 40}
+
+seed <- 666
+
+Load_value <- c(40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_40 <- get_metrics(predictions)
+
+```
+
+
+### 20
+
+```{r Final features L 20}
+
+seed <- 666
+
+Load_value <- c(20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_20 <- get_metrics(predictions)
+
+```
+
+### -40
+
+```{r Final features L -40}
+
+seed <- 666
+
+Load_value <- c(-40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_n40 <- get_metrics(predictions)
+
+```
+
+## Augmented
+
+### 40 
+
+```{r}
+
+seed <- 666
+
+Load_value <- c(40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+
+table(experiments[[1]]$train_y)
+
+experiments <- lapply(experiments,
+                      FUN = augment_classwisse, 
+                     lub_reps = 1,  
+                     train_reps = 3,
+                     point_reps = 2)
+table(experiments[[1]]$train_y) 
+
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_40_augmented <- get_metrics(predictions)
+
+```
+
+### 20 
+
+```{r}
+
+seed <- 666
+
+Load_value <- c(20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+
+table(experiments[[1]]$train_y)
+
+experiments <- lapply(experiments,
+                      FUN = augment_classwisse, 
+                     lub_reps = 1,  
+                     train_reps = 3,
+                     point_reps = 2)
+table(experiments[[1]]$train_y) 
+
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_20_augmented <- get_metrics(predictions)
+
+```
+
+### -40
+
+```{r}
+
+seed <- 666
+
+Load_value <- c(-40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+
+table(experiments[[1]]$train_y)
+
+experiments <- lapply(experiments,
+                      FUN = augment_classwisse, 
+                     lub_reps = 1,  
+                     train_reps = 3,
+                     point_reps = 2)
+table(experiments[[1]]$train_y) 
+
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_n40_augmented <- get_metrics(predictions)
+
+```
+
+
+## Severe
+
+### 40 
+
+```{r Severe cases all loads final features}
+
+seed <- 666
+
+Load_value <- c(40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real' & ( (Test_ID == 'train') | (Test_ID == 'point' & Degradation_stage %in% c(6,7,8)) | (Test_ID == 'lub' & Degradation_stage %in% 2)))
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_40_severe <- get_metrics(predictions)
+
+```
+
+### 20
+
+```{r Severe cases all loads final features}
+
+seed <- 666
+
+Load_value <- c(20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real' & ( (Test_ID == 'train') | (Test_ID == 'point' & Degradation_stage %in% c(6,7,8)) | (Test_ID == 'lub' & Degradation_stage %in% 2)))
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_20_severe <- get_metrics(predictions)
+
+```
+
+### -40
+
+```{r Severe cases all loads final features}
+
+seed <- 666
+
+Load_value <- c(-40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real' & ( (Test_ID == 'train') | (Test_ID == 'point' & Degradation_stage %in% c(6,7,8)) | (Test_ID == 'lub' & Degradation_stage %in% 2)))
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_n40_severe <- get_metrics(predictions)
+
+```
+
+## Chronology
+
+### 40
+
+```{r Chronology final features 40}
+
+seed <- 666
+
+Load_value <- c(40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE )
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75,
+                     grouping_vars = meta_vars)
+ 
+
+predictions <- lapply(experiments, predict_majority_lda)
+
+
+final_features_40_chronology <- get_metrics(predictions)
+
+final_features_40_chronology
+
+```
+
+
+### 20 
+
+```{r Chronology final features 20}
+
+seed <- 666
+
+Load_value <- c(20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE )
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75,
+                     grouping_vars = meta_vars)
+ 
+
+predictions <- lapply(experiments, predict_majority_lda)
+
+final_features_20_chronology <- get_metrics(predictions)
+
+final_features_20_chronology
+
+```
+
+### -40
+
+```{r Chronology final features 20}
+
+seed <- 666
+
+Load_value <- c(-40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE )
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75,
+                     grouping_vars = meta_vars)
+ 
+
+predictions <- lapply(experiments, predict_majority_lda)
+
+final_features_n40_chronology <- get_metrics(predictions)
+
+final_features_n40_chronology
+
+```
+
+
+
+## Graphs
+
+
+```{r combining previous results}
+
+combine_loadwise_results <-  function(load1, load2, load3, metric, load_names = c('20', '40', '-40'), Testname = NULL){
+  # browser()
+  combined <- cbind(load1[[metric]], load2[[metric]], load3[[metric]])
+  
+  colnames(combined) <- load_names
+ 
+  combined <- as.data.frame(combined)
+  
+if(!is.null(Testname)){
+
+combined$Test <- rep(Testname, nrow(combined))      
+  }
+  
+return(combined)
+}
+
+
+loadwise_results_acc <- rbind(
+combine_loadwise_results(final_features_20, final_features_40, final_features_n40, 'ACC', Testname =  "Final F."),
+combine_loadwise_results(all_features_20, all_features_40, all_features_n40, 'ACC', Testname = "All F."),
+combine_loadwise_results(final_features_20_augmented, final_features_40_augmented , final_features_n40_augmented , 'ACC', Testname = "Final F. Augmented"),
+combine_loadwise_results(final_features_20_severe, final_features_40_severe , final_features_n40_severe , 'ACC', Testname = "Final F. Severe"),
+combine_loadwise_results(final_features_20_chronology, final_features_40_chronology , final_features_n40_chronology , 'ACC', Testname = "Final F. Chronology")
+)
+
+loadwise_results_kappa <- rbind(
+combine_loadwise_results(final_features_20, final_features_40, final_features_n40, 'cohen_Kappa', Testname =  "Final F."),
+combine_loadwise_results(all_features_20, all_features_40, all_features_n40, 'cohen_Kappa', Testname = "All F."),
+combine_loadwise_results(final_features_20_augmented, final_features_40_augmented , final_features_n40_augmented , 'cohen_Kappa', Testname = "Final F. Augmented"),
+combine_loadwise_results(final_features_20_severe, final_features_40_severe , final_features_n40_severe , 'cohen_Kappa', Testname = "Final F. Severe"),
+combine_loadwise_results(final_features_20_chronology, final_features_40_chronology , final_features_n40_chronology , 'cohen_Kappa', Testname = "Final F. Chronology")
+)
+
+```
+
+```{r }
+
+diag_final_f_loadwise_acc <- loadwise_results_acc %>% 
+                                tidyr::gather(., key = 'Load [Kgf]', value = 'Accuracy', -Test ) %>%  
+                                ggplot(., aes(x = Test, y = Accuracy, fill = `Load [Kgf]`)) + 
+                                  geom_boxplot() +
+                                  xlab('') + 
+                                  theme_minimal() +
+                                  coord_flip() + 
+                                  scale_fill_brewer(palette="PuOr")+
+                                  scale_y_continuous(limits=c(-0.1, 0.82))
+
+  
+diag_final_f_loadwise_acc 
+
+diag_final_f_loadwise_kappa <- loadwise_results_kappa %>% 
+                                tidyr::gather(., key = 'Load [Kgf]', value = 'Kappa', -Test ) %>%  
+                                ggplot(., aes(x = Test, y = Kappa, fill = `Load [Kgf]`)) + 
+                                  geom_boxplot() +
+                                  xlab('') + 
+                                  theme_minimal() +
+                                  coord_flip() + 
+                                  scale_fill_brewer(palette="PuOr") +
+                                  scale_y_continuous(limits=c(-0.1, 0.82))
+
+
+
+
+diag_final_f_loadwise_kappa 
+
+diag_final_f_loadwise <- cowplot::plot_grid(
+                                      cowplot::plot_grid(
+                                          diag_final_f_loadwise_acc + theme(legend.position = 'none'),
+                                          diag_final_f_loadwise_kappa + theme(legend.position = 'none', axis.text.y = element_blank()),
+                                          rel_widths = c(1,0.8)),
+                                      cowplot::get_legend(diag_final_f_loadwise_acc + theme(legend.position = 'bottom')),
+                                      ncol = 1,
+                                      rel_heights = c(1,0.1)
+                                            )
+
+diag_final_f_loadwise
+
+diag_final_f_loadwise %>%
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'diag_final_f_loadwise_boxplot.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+
+
+```
+
+
+
+
+
+
+
+
+
+
+

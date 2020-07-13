@@ -1,0 +1,523 @@
+---
+title: "01. Hybrid diagnosis with all loads"
+author: "Kerman López de Calle Etxabe"
+date: "25/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r Dependency loading, message=FALSE, warning=FALSE }
+
+library(magrittr)
+library(dplyr)
+library(factoextra)
+
+source(here::here('R', 'Analysis', 'aux_predictions.R'))
+source(here::here('R', 'Analysis', 'aux_experiments.R'))
+source(here::here('R', 'Analysis', 'aux_metrics.R'))
+
+
+```
+
+
+```{r Data loading}
+
+load(here::here('Data', 'Processed_data', 'augmented_descriptors.Rdata'))
+load(here::here('Data', 'filtered_features.Rdata'))
+
+meta_vars <- c('Degradation_stage', 'Load', 'Test_ID', 'Origin', 'Segment', 'Repetition')
+
+```
+
+# All loads 
+
+
+## All features
+
+
+
+```{r All features diagnosis, warning=TRUE}
+
+seed <- 666
+
+Load_value <- c(40, 20, -40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = NULL, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+all_features_n_loads <- get_metrics(predictions)
+
+all_features_n_loads$ACC
+
+```
+
+
+
+
+
+
+## Final features
+
+
+```{r Final features diagnosis}
+
+seed <- 666
+
+Load_value <- c(40, 20, -40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_all_loads <- get_metrics(predictions)
+
+final_features_all_loads$ACC
+
+```
+
+## PCA All features
+
+
+```{r PCA all features all loads}
+
+
+Load_value <- c(40, 20, -40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = NULL, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+train_x <- train_test$train %>% select(-one_of(meta_vars))
+test_x <- train_test$test %>% select(-one_of(meta_vars))
+
+
+pca_x <- prcomp(x = train_x, center = TRUE, scale = TRUE )
+
+fviz_eig(pca_x, addlabels = TRUE, ncp = 20)
+
+
+
+
+```
+
+```{r Pc retention}
+
+retained_PCs <- 10
+
+get_eigenvalue(pca_x)[retained_PCs,'cumulative.variance.percent']
+
+
+train_pca_x <- pca_x$x[,1:retained_PCs]
+
+test_pca_x <- predict(newdata = test_x, pca_x)[,1:retained_PCs]
+
+train_test$train <- cbind(train_pca_x, select(train_test$train, one_of(meta_vars)  ))
+train_test$test <- cbind(test_pca_x, select(train_test$test, one_of(meta_vars)  ))
+                           
+
+```
+
+
+
+```{r Diagnostic accuracy}
+
+seed <- 666
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = FALSE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+pca_all_features_all_loads <- get_metrics(predictions)
+
+
+
+```
+
+## PCA Final features
+
+
+
+```{r PCA of final features }
+
+
+
+Load_value <- c(40,-40,20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+train_x <- train_test$train %>% select(-one_of(meta_vars))
+test_x <- train_test$test %>% select(-one_of(meta_vars))
+
+
+pca_x <- prcomp(x = train_x, center = TRUE, scale = TRUE )
+
+fviz_eig(pca_x, addlabels = TRUE, ncp = 20)
+
+
+
+
+```
+
+```{r reducing final features pca dimensionality}
+
+retained_PCs <- 3
+
+get_eigenvalue(pca_x)[retained_PCs,'cumulative.variance.percent']
+
+train_pca_x <- pca_x$x[,1:retained_PCs]
+
+test_pca_x <- predict(newdata = test_x, pca_x)[,1:retained_PCs]
+
+train_test$train <- cbind(train_pca_x, select(train_test$train, one_of(meta_vars)  ))
+train_test$test <- cbind(test_pca_x, select(train_test$test, one_of(meta_vars)  ))
+                           
+
+```
+
+
+
+```{r Measuring pca all all acc}
+
+seed <- 666
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = FALSE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+pca_final_features_all_loads <- get_metrics(predictions)
+
+
+
+```
+
+## Augmented final features
+
+
+```{r}
+
+seed <- 666
+
+Load_value <- c(40,-40,20)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+
+table(experiments[[1]]$train_y)
+
+experiments <- lapply(experiments,
+                      FUN = augment_classwisse, 
+                     lub_reps = 1,  
+                     train_reps = 3,
+                     point_reps = 2)
+table(experiments[[1]]$train_y) 
+
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_all_loads_augmented <- get_metrics(predictions)
+
+
+
+
+
+```
+
+## Severe final features
+
+```{r Severe cases all loads final features}
+
+seed <- 666
+
+Load_value <- c(40, 20, -40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real' & ( (Test_ID == 'train') | (Test_ID == 'point' & Degradation_stage %in% c(6,7,8)) | (Test_ID == 'lub' & Degradation_stage %in% 2)))
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE)
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.75)
+ 
+
+predictions <- lapply(experiments, predict_lda)
+
+final_features_severe <- get_metrics(predictions)
+
+```
+
+## Chronology Final features
+
+
+```{r Chronology final features all loads}
+
+seed <- 666
+
+Load_value <- c(40, 20, -40)
+
+train_idx <- with(descriptors, (Origin == 'Synthetic' | (Origin == 'Real' & Test_ID == 'train')) & Load %in% Load_value )
+
+test_idx <- with(descriptors, Load %in% Load_value & Origin == 'Real')
+
+train_test <- data_case_filter(descriptors, train_cases = train_idx, test_cases = test_idx, features = final_features, remove_vars = meta_vars, show_validity = TRUE )
+
+
+
+seeds <- seq(1:10)*seed
+
+experiments <- lapply(seeds, FUN = create_experiment, 
+                     train_test = train_test,  
+                     remove_vars = meta_vars,
+                     target_var = 'Test_ID', 
+                     scale_data = TRUE,
+                     train_prop = 0.8,
+                     grouping_vars = meta_vars)
+ 
+
+predictions <- lapply(experiments, predict_majority_lda)
+
+final_features_chronology <- get_metrics(predictions)
+
+final_features_chronology
+
+```
+
+## Graph
+
+```{r All loads: Combining results}
+
+All_L_table_ACC <- rbind(
+all_features_n_loads$ACC,
+final_features_all_loads$ACC,
+pca_all_features_all_loads$ACC,
+pca_final_features_all_loads$ACC,
+final_features_all_loads_augmented$ACC,
+final_features_severe$ACC,
+final_features_chronology$ACC
+)
+
+All_L_table_kappa <- rbind(
+all_features_n_loads$cohen_Kappa,
+final_features_all_loads$cohen_Kappa,
+pca_all_features_all_loads$cohen_Kappa,
+pca_final_features_all_loads$cohen_Kappa,
+final_features_all_loads_augmented$cohen_Kappa,
+final_features_severe$cohen_Kappa,
+final_features_chronology$cohen_Kappa
+)
+
+```
+
+### Faults together
+
+```{r All loads: Rename and plot acc}
+
+all_loads_diag_acc <- t(All_L_table_ACC) %>% 
+  as.data.frame() %>% 
+  tidyr::gather(., key = 'Test', 'value') %>% 
+  mutate(Test = forcats::fct_relevel(Test,   paste('V', 1:7, sep = '')   ) ) %>% 
+  mutate(Test = forcats::fct_recode(Test,   "All. F." = 'V1', "Final F." = 'V2', "All. F. PCA" = 'V3', "Final F. PCA" = 'V4', 
+                                    "Final F. Augmented" = 'V5', "Final F. Severe faults" = 'V6', "Final F. Chronology" = 'V7') ) %>% 
+  ggplot(., aes(x= Test, y = value)) + 
+  geom_boxplot() +
+  theme_minimal() +
+  ylab('Acuraccy') +
+  xlab('') +
+  scale_y_continuous(limits=c(-0.1, 0.75)) +
+  coord_flip()
+
+all_loads_diag_acc
+
+
+all_loads_diag_acc %>% 
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'all_loads_diag_boxplot_acc.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+```
+
+```{r All loads: Rename and plot kappa}
+
+all_loads_diag_kappa <- t(All_L_table_kappa) %>% 
+        as.data.frame() %>% 
+        tidyr::gather(., key = 'Test', 'value') %>% 
+  mutate(Test = forcats::fct_relevel(Test,   paste('V', 1:7, sep = '')   ) ) %>% 
+  mutate(Test = forcats::fct_recode(Test,   "All. F." = 'V1', "Final F." = 'V2', "All. F. PCA" = 'V3', "Final F. PCA" = 'V4', 
+                                    "Final F. Augmented" = 'V5', "Final F. Severe faults" = 'V6', "Final F. Chronology" = 'V7') ) %>%  
+  ggplot(., aes(x = Test, y = value)) + 
+        geom_boxplot() +
+        theme_minimal() +
+        ylab('Kappa') +
+        xlab('') +
+        theme(axis.text.y = element_blank()) +
+        scale_y_continuous(limits=c(-0.1, 0.75))  +
+        coord_flip()
+
+all_loads_diag_kappa
+
+all_loads_diag_kappa %>% 
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'all_loads_diag_boxplot_kappa.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+```
+
+
+```{r All loads: Combined metrics}
+
+all_loads_hyb_diag_metrics <- cowplot::plot_grid(
+  all_loads_diag_acc ,
+  all_loads_diag_kappa,
+  ncol = 2, 
+  rel_widths = c(1,0.8)
+
+
+)
+  
+all_loads_hyb_diag_metrics
+
+
+all_loads_hyb_diag_metrics %>% 
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'all_loads_diag_boxplot_metrics.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+
+```
+
+### Faultwise
+
+```{r All loads: Faultwise}
+
+
+groupwise_test_list <- list(
+                          final_features_all_loads = final_features_all_loads$groupwise_ACC ,
+                          final_features_severe = final_features_severe$groupwise_ACC ,
+                          pca_final_features_all_loads = pca_final_features_all_loads$groupwise_ACC,
+                          final_features_all_loads_augmented = final_features_all_loads_augmented$groupwise_ACC,
+                          final_features_chronology = final_features_chronology$groupwise_ACC
+                        ) %>% 
+                        lapply(., FUN = t) %>% 
+                        lapply(., FUN = as.data.frame) 
+
+groupwise_test_list <- mapply( FUN = function(groupwise_acc, test_name){groupwise_acc$Test <- rep(test_name, nrow(groupwise_acc)); return(groupwise_acc)}, 
+        groupwise_test_list, 
+        names(groupwise_test_list),
+        SIMPLIFY = FALSE
+)
+
+groupwise_test_list  <- do.call(rbind, groupwise_test_list) %>% setNames(., c('Lubrication', 'Spalling', 'Nominal', 'Test'))
+
+hyb_diag_groupwise <- groupwise_test_list %>% 
+                                tidyr::gather(., key = 'Fault', value = 'Accuracy', -Test ) %>%  
+                                mutate(Test = forcats::fct_recode(Test,   
+                                                                  "Final features" = 'final_features_all_loads', 
+                                                                  "Severe cases" =  'final_features_severe',
+                                                                  "PCA" = 'pca_final_features_all_loads',
+                                                                  "Augmented" = 'final_features_all_loads_augmented',
+                                                                  "Chronology" = 'final_features_chronology')) %>%   
+                                ggplot(., aes(x = Test, y = Accuracy, fill = Fault)) + 
+                                  geom_boxplot() +
+                                  xlab('') + 
+                                  theme_minimal() + 
+                                  scale_fill_brewer(palette="PuOr")
+hyb_diag_groupwise 
+
+hyb_diag_groupwise %>% 
+  cowplot::save_plot(plot = .,
+                     filename = here::here('figures', 'hyb_diag_boxplot_groupwise.png'),
+                     dpi = 450,
+                     bg = 'transparent'
+                     )
+  
+```
+

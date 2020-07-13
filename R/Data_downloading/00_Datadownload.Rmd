@@ -1,0 +1,84 @@
+---
+title: "00 Data downloading"
+author: "Kerman López de Calle Etxabe (kerman.lopezdecalle@tekniker.es)"
+date: "17th june 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Data downloading
+
+This script has the only purpose of dowloading the data from the test rig and segmenting adding cycles variable to the dataset.
+The dataset will be downloaded in the ../Data/Raw folder. The merged mat files will be stored in a new Rdata type object called bigdata.R and stored in ../Data folder.
+
+```{r Package and function loading, message=FALSE, warning=FALSE}
+
+library(R.matlab)
+library(magrittr)
+library(dplyr)
+
+source(here::here('R', 'Data_downloading',  '00_Datadownload_auxiliars.R'))
+
+```
+
+```{r Check data existence and download if necessary}
+
+if(!file.exists(here::here('Data', 'Raw', '5097649.zip'))){
+  
+download.file('https://ndownloader.figshare.com/articles/5097649?private_link=dac98f9c1bc46b7a2800', 
+              here::here('Data', 'Raw', '5097649.zip'), 
+              mode = 'wb'
+              )
+}
+```
+
+```{r Unzip if mat files not found in data folder}
+
+required_files <- paste0(here::here('Data/Raw'), '/', c("Backlash1.mat", "Backlash2.mat", "LackLubrication1.mat", "LackLubrication2.mat", "Normal.mat", "Spalling1.mat","Spalling2.mat", "Spalling3.mat", "Spalling4.mat", "Spalling5.mat", "Spalling6.mat", "Spalling7.mat", "Spalling8.mat"))
+
+if(any(file.exists(required_files )==FALSE)){
+unzip(here::here('Data', 'Raw', '5097649.zip'), exdir = here::here('Data', 'Raw'))
+}
+
+```
+
+
+```{r Mat file identification}
+
+data_files <- dir(here::here('Data', 'Raw'))
+
+mat_files <- data_files[grep(pattern = '.mat', data_files)]
+
+
+```
+
+
+```{r Bigdata generation and storing} 
+
+bigdata <- lapply( mat_files, FUN=read_n_merge_mat)
+
+bigdata <- do.call('rbind', bigdata)
+
+bigdata %<>% group_by(Test_ID, Degradation_stage, Motion, Load) %>% 
+  mutate(., Index = 1:n(), Time = (Index*0.04)) %>% 
+  ungroup() %>% 
+  mutate(Degradation_stage = ifelse(!Degradation_stage %in% c(1:8), 0, Degradation_stage ))
+
+bigdata %<>% 
+  group_by(Test_ID, Motion, Degradation_stage, Load, Repetition) %>% 
+  do(segment_in_cycles(.)) %>% 
+  ungroup() %>% 
+  group_by(Test_ID, Degradation_stage, Motion, Load, Repetition, Segment) %>% 
+  mutate(., SIndex = 1:n(), STime = (SIndex*0.04-0.04)) %>% 
+  ungroup()
+  
+
+ save(bigdata, file = here::here( 'Data', 'bigdata.Rdata') )
+
+```
+
+
+

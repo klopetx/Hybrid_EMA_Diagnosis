@@ -6,17 +6,21 @@ This repository contains the analysis and data processing steps that were carrie
 For better understanding of the code, please read the published work here[]. If you need further details you may contact the main author, Kerman López de Calle Etxabe at kerman.lopezdecalle@tekniker.es.
 
 
-# Running recommendations
+# Running recommendations / Dependencies
 
-The code was developed in a Windows 10 machine with Rstudio and R version 3.6.1.
-Nevertheless, we recommend the use of [Rstudio cloud], tested in windows and (Linux)?
-Rstudio needed? Rversion?
+The code was developed in a Windows 10 machine with Rstudio 1.2.1335 and R version 3.6.1.
+It has been also tested in Ubuntu with R > 3.6.
+The work is packaged as a project, therefore, using Rstudio is recommended. 
+Furthermore [renv package] has been used to keep track of dependencies. 
+Once you open the project you should install renv (if not already installed) and run renv::restore(). Automatically
+renv will download and install the packages required to build the project.
+
 
 # Project and code
 
 The code in this project contains the steps taken from the raw data (available at a different repo) to the final results. The code recreates the final figures and results included in the paper. 
 
-There are three main parts on the code which is stored in the [R folder]:
+There are three main parts on the code which is stored in the /R folder:
 
 -  Data_downloading: Contains scripts to download the public data.
 -  Pre-processing: Contains the scipts to process cycles and extract features.
@@ -33,7 +37,4 @@ If you want to use any of the code found here or would like to refer to our work
 
 
 
-
-[Rstudio cloud]: https://rstudio.cloud/
-
-[R folder]: (../R)
+[renv package]: https://rstudio.github.io/renv/articles/renv.html

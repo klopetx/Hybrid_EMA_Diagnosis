@@ -15,9 +15,6 @@
 
 rmarkdown::render(input = here::here('R', 'Data_downloading', '00_Datadownload.Rmd'), output_file = here::here('Reports', 'Data_downloading', '00_Datadownload.html'))
 
-rmarkdown::render(input = here::here('R', 'Data_downloading', '00.1_Real_operation_reproduction.Rmd'), output_file = here::here('Reports', 'Data_downloading', '00.1_Real_operation_reproduction.html'))
-
-
 # Pre-processing reports --------------------------------------------------
 
 rmarkdown::render(input = here::here('R', 'Pre-processing', '00_Synthetic_data_validation.Rmd'), output_file = here::here('Reports', 'Pre-processing', '00_Synthetid_data_validation.html'))
@@ -30,6 +27,8 @@ rmarkdown::render(input = here::here('R', 'Pre-processing', '01.2_Extracted_desc
 
 
 # Analysis reports --------------------------------------------------------
+
+rm(list = ls())
 
 rmarkdown::render(input = here::here('R', 'Analysis', '00_Descriptor_filtering.Rmd'), output_file = here::here('Reports', 'Analysis', '00_Descriptor_filtering.html'))
 

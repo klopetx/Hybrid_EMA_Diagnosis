@@ -1,8 +1,8 @@
 ---
 title: "01.2_Extracted descriptors"
-author: "Kerman López de Calle Etxabe"
-date: "20/2/2020"
-output: html_document
+output: 
+  html_document:
+    smart: false
 ---
 
 # Extracted descriptors

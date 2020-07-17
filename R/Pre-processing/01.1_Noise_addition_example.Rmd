@@ -1,8 +1,8 @@
 ---
 title: "01.1_Noise_addition_example"
-author: "Kerman López de Calle Etxabe"
-date: "19/2/2020"
-output: html_document
+output: 
+  html_document:
+    smart: false
 ---
 
 ```{r setup, include=FALSE}

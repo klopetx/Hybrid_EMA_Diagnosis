@@ -1,8 +1,8 @@
 ---
 title: "04. Benchmark"
-author: "Kerman López de Calle"
-date: "1/7/2020"
-output: html_document
+output: 
+  html_document:
+    smart: false
 ---
 
 ```{r setup, include=FALSE}

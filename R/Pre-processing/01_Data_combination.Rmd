@@ -1,8 +1,8 @@
 ---
 title: "01_Data_combination"
-author: "Kerman López de Calle Etxabe"
-date: "18/2/2020"
-output: html_document
+output: 
+  html_document:
+    smart: false
 ---
 
 ```{r setup, include=FALSE}

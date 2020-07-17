@@ -12,8 +12,8 @@ The code was developed in a Windows 10 machine with Rstudio 1.2.1335 and R versi
 It has been also tested in Ubuntu with R > 3.6.
 The work is packaged as a project, therefore, using Rstudio is recommended. 
 Furthermore [renv package] has been used to keep track of dependencies. 
-Once you open the project you should install renv (if not already installed) and run renv::restore(). Automatically
-renv will download and install the packages required to build the project.
+Once you open the project (Hybrid_EMA.Rproj file) you should install renv (if not already installed) and run renv::restore(). Renv will automatically
+download and install the packages required to build and run the project.
 
 
 # Project and code
@@ -28,7 +28,7 @@ There are three main parts on the code which is stored in the /R folder:
 
 Each folder contains numbered Rmd files that the steps taken for in each phase. The .R files starting with 'aux' contain auxiliar functions used for the development of the code in the Rmd files.
 
-You can either run the main.R script in the R folder to reproduce all the reports and store them in .html format in the Reports folder, or you can go one by one running the Rmd files by yourself. It is precisse that you run them in order.
+You can either run the **main.R** script in the R folder to reproduce all the reports and store them in .html format in the Reports folder, or you can go one by one running the Rmd files by yourself. **It is precisse that you run them in order**: 1) Data downloading 2) Pre-processing 3) Analysis.
 
 # Citations
 

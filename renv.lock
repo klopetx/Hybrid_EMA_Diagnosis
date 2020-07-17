@@ -7,7 +7,7 @@
     "Repositories": [
       {
         "Name": "CRAN",
-        "URL": "https://cran.rstudio.com/"
+        "URL": "https://cran.rstudio.com"
       }
     ]
   },
@@ -105,10 +105,10 @@
     },
     "Rcpp": {
       "Package": "Rcpp",
-      "Version": "1.0.4.6",
+      "Version": "1.0.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "953dd3c83f8812500b53d0d00f15469c"
+      "Hash": "0995668e16fa7349dafaec190acfd73b"
     },
     "RcppEigen": {
       "Package": "RcppEigen",
@@ -389,13 +389,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "4e8e453aff36dd8ddac10ff157083e4f"
-    },
-    "gganimate": {
-      "Package": "gganimate",
-      "Version": "1.0.5",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "f69992483872213b43c1fb949a4d0271"
     },
     "ggforce": {
       "Package": "ggforce",
@@ -879,6 +872,18 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "d3d55a556f7f2e74f449d6a53b8abf8e"
+    },
+    "renv": {
+      "Package": "renv",
+      "Version": "0.7.0-54",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "renv",
+      "RemoteUsername": "rstudio",
+      "RemoteRef": "master",
+      "RemoteSha": "3709d1ca97b1a463c9d7f5a6db608a48205c4481",
+      "Hash": "e20e762b3f87fb968b45e8b7d0acd53b"
     },
     "reshape2": {
       "Package": "reshape2",

@@ -32,7 +32,11 @@ You can either run the **main.R** script in the R folder to reproduce all the re
 
 # Citations
 
-If you want to use any of the code found here or would like to refer to our work consider citing this repository with the following citation.
+If you want to use any of the code found here or would like to refer to our work consider citing this repository with the following DOI.
+
+[![DOI](https://zenodo.org/badge/267854142.svg)](https://zenodo.org/badge/latestdoi/267854142)
+
+
 
 
 

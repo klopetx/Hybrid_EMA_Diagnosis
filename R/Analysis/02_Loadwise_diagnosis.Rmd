@@ -657,7 +657,7 @@ diag_final_f_loadwise
 
 diag_final_f_loadwise %>%
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'diag_final_f_loadwise_boxplot.png'),
+                     filename = here::here('figures', 'diag_final_f_loadwise_boxplot.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )

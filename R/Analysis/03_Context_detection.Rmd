@@ -288,7 +288,7 @@ context_detction_acc
 
 context_detction_acc %>% 
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'context_detection_boxplot_acc.png'),
+                     filename = here::here('figures', 'context_detection_boxplot_acc.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )

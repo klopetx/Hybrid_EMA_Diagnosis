@@ -88,7 +88,7 @@ p_seg_divide <- ggplot(segment, aes(STime, Setpoint, colour = Region )) +
 
 p_seg_divide %>%  
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'setpoint_segmentation.png'),
+                     filename = here::here('figures', 'setpoint_segmentation.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )
@@ -281,7 +281,7 @@ combined_plots
 
 combined_plots %>% 
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'extracted_indicators.png'),
+                     filename = here::here('figures', 'extracted_indicators.pdf'),
                      dpi = 450,
                      base_aspect_ratio = 2.7,
                      bg = 'transparent'

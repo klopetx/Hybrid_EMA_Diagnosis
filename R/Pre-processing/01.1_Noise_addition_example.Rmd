@@ -191,7 +191,7 @@ ncol = 1,
 rel_heights = c(1,0.075)
 ) %>% 
   cowplot::save_plot(plot = ., 
-                     filename = paste0(here::here('figures'), '/', 'noise_addition', '.png' ),
+                     filename = paste0(here::here('figures'), '/', 'noise_addition', '.pdf' ),
                      dpi = 450,
                      base_aspect_ratio = 2.3,
                      bg= 'transparent'

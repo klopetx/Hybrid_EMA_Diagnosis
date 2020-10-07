@@ -417,7 +417,7 @@ all_loads_diag_acc
 
 all_loads_diag_acc %>% 
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'all_loads_diag_boxplot_acc.png'),
+                     filename = here::here('figures', 'all_loads_diag_boxplot_acc.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )
@@ -444,7 +444,7 @@ all_loads_diag_kappa
 
 all_loads_diag_kappa %>% 
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'all_loads_diag_boxplot_kappa.png'),
+                     filename = here::here('figures', 'all_loads_diag_boxplot_kappa.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )
@@ -467,7 +467,7 @@ all_loads_hyb_diag_metrics
 
 all_loads_hyb_diag_metrics %>% 
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'all_loads_diag_boxplot_metrics.png'),
+                     filename = here::here('figures', 'all_loads_diag_boxplot_metrics.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )
@@ -514,7 +514,7 @@ hyb_diag_groupwise
 
 hyb_diag_groupwise %>% 
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'hyb_diag_boxplot_groupwise.png'),
+                     filename = here::here('figures', 'hyb_diag_boxplot_groupwise.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )

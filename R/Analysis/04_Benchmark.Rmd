@@ -315,7 +315,7 @@ multilabel_k
 
 multilabel_k %>% 
   cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'benchmark_multilabel_boxplot_kappa.png'),
+                     filename = here::here('figures', 'benchmark_multilabel_boxplot_kappa.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )
@@ -354,7 +354,7 @@ binary_k
 
 binary_k %>% 
     cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'benchmark_binary_boxplot_kappa.png'),
+                     filename = here::here('figures', 'benchmark_binary_boxplot_kappa.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )
@@ -374,7 +374,7 @@ multi_binary_combined
 
 multi_binary_combined %>% 
       cowplot::save_plot(plot = .,
-                     filename = here::here('figures', 'benchmark_combined_boxplot_kappa.png'),
+                     filename = here::here('figures', 'benchmark_combined_boxplot_kappa.pdf'),
                      dpi = 450,
                      bg = 'transparent'
                      )

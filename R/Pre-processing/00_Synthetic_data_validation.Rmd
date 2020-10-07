@@ -134,7 +134,7 @@ damage_in_sources <-
 damage_in_sources 
 
  cowplot::save_plot(plot = damage_in_sources , 
-                     filename = paste0(here::here('figures'), '/', 'syn_real_faults', '.png' ),
+                     filename = paste0(here::here('figures'), '/', 'syn_real_faults', '.pdf' ),
                      dpi = 450,
                      base_aspect_ratio = 2.3,
                      bg= 'transparent'
@@ -222,7 +222,7 @@ ncol = 1,
 rel_heights = c(1,0.15)
 )  
   cowplot::save_plot(plot = load_effect, 
-                     filename = paste0(here::here('figures'), '/', 'syn_real_signals', '.png' ),
+                     filename = paste0(here::here('figures'), '/', 'syn_real_signals', '.pdf' ),
                      dpi = 450,
                      base_aspect_ratio = 2.3,
                      bg= 'transparent'
@@ -341,7 +341,7 @@ spalling_fault <- cowplot::plot_grid(
                     ) 
 
       cowplot::save_plot(plot = spalling_fault, 
-                     filename = paste0(here::here('figures'), '/', 'spalling_fault_signal', '.png' ),
+                     filename = paste0(here::here('figures'), '/', 'spalling_fault_signal', '.pdf' ),
                      dpi = 450,
                      base_aspect_ratio = 2.3,
                      bg= 'transparent'

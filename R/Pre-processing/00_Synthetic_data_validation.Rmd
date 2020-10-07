@@ -68,6 +68,80 @@ group_by(Test_ID, Load, ViscousFR, SpallingFR) %>%
 
 ```
 
+```{r Fault comparison in raw signal}
+
+synthetics <- formated_files %>% 
+  filter(Degradation_stage %in% c(0,5000,25), Load == 40) 
+
+reals <- bigdata %>% 
+    filter(Repetition == 2, Segment == 2, Load == 40, Motion == 'trapezoidal', Test_ID %in% c('train', 'lub', 'point'),Degradation_stage %in% c(0,8) | (Degradation_stage == 2 & Test_ID =='lub')) %>% group_by(Degradation_stage, Test_ID) 
+  
+
+  # syn_current_faults <- 
+
+
+syn_current_faults <- 
+    synthetics %>% 
+      mutate(`Health condition` = ifelse(Test_ID == 'train', 'Healthy', ifelse(Test_ID=='lub', 'Lubrication', 'Spalling'))) %>% 
+    ggplot(., aes(STime, Current, colour = `Health condition`)) +
+                          geom_line() +
+                          theme_minimal()+
+                          ylab('Current [A]') +
+                          xlab('Time [s]') + 
+                          scale_y_continuous(limits = c(0.3, 1.5))
+syn_pos_faults <-    
+    synthetics %>% 
+      mutate(`Health condition` = ifelse(Test_ID == 'train', 'Healthy', ifelse(Test_ID=='lub', 'Lubrication', 'Spalling'))) %>% 
+    ggplot(., aes(STime, Pos_error, colour = `Health condition`)) +
+                          geom_line() +
+                          theme_minimal() +
+                          ylab('Position error [mm]')+
+                          xlab('Time [s]') + 
+                          scale_y_continuous(limits = c(-4, 4))
+real_current_faults <-   
+    reals %>% 
+      mutate(`Health condition` = ifelse(Test_ID == 'train', 'Healthy', ifelse(Test_ID=='lub', 'Lubrication', 'Spalling'))) %>% 
+    ggplot(., aes(STime, Current, colour = `Health condition`)) +
+                          geom_line() +
+                          theme_minimal()+
+                          ylab('Current [A]') +
+                          xlab('Time [s]') + 
+                          scale_y_continuous(limits = c(0.3, 1.5))
+ real_pos_faults <-    
+    reals %>% 
+            mutate(`Health condition` = ifelse(Test_ID == 'train', 'Healthy', ifelse(Test_ID=='lub', 'Lubrication', 'Spalling'))) %>% 
+    ggplot(., aes(STime, Pos_error, colour = `Health condition`)) +
+                          geom_line() +
+                          theme_minimal()+
+                          ylab('Position error [mm]') +
+                          xlab('Time [s]')+ 
+                          scale_y_continuous(limits = c(-4, 4))
+damage_in_sources <- 
+ cowplot::plot_grid(    
+ cowplot::plot_grid(
+   real_current_faults+ theme(legend.position = 'none'),
+    real_pos_faults + theme(legend.position = 'none'),
+      syn_current_faults+ theme(legend.position = 'none'),
+   syn_pos_faults+ theme(legend.position = 'none'),
+   labels = c('a)', 'b)', 'c)', 'd)'),
+   hjust = -3.05
+ ),
+ cowplot::get_legend(syn_current_faults+ theme(legend.position = 'bottom')),
+ ncol = 1,
+ rel_heights = c(1.1,0.1)
+ )
+ 
+damage_in_sources 
+
+ cowplot::save_plot(plot = damage_in_sources , 
+                     filename = paste0(here::here('figures'), '/', 'syn_real_faults', '.png' ),
+                     dpi = 450,
+                     base_aspect_ratio = 2.3,
+                     bg= 'transparent'
+                     ) 
+
+```
+
 
 ## Loads
 

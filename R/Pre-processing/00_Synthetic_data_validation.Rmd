@@ -104,6 +104,13 @@ re_current_by_load <-  load_big %>%
 ```{r}
 
 
+formated_files %<>% 
+  mutate(., Load = case_when(
+                    Load == 20 ~ 196,
+                    Load == 40 ~ 392,
+                    Load == -40 ~ -392
+                            )
+        )
 
 current_by_load <- formated_files %>% 
                       filter(Test_ID == 'train') %>% 
@@ -116,8 +123,8 @@ current_by_load <- formated_files %>%
 
 pos_error_by_load <- formated_files %>% 
                       filter(Test_ID == 'train') %>% 
-                      mutate(`Load [kg]` = factor(Load)) %>% 
-                      ggplot(., aes(STime, Pos_error, colour = `Load [kg]` )) +
+                      mutate(`Load [N]` = factor(Load)) %>% 
+                      ggplot(., aes(STime, Pos_error, colour = `Load [N]` )) +
                       geom_line(size = 0.7, linetype = "dashed") +
                       theme_minimal() + 
                       theme(legend.position = 'bottom') +
@@ -161,7 +168,7 @@ The following figure depics the lack of lubrication failure with increasing seve
 
 
 fake_friction <- formated_files %>% 
-  filter((Test_ID == 'train' | Test_ID == 'lub'), Load == 20)
+  filter((Test_ID == 'train' | Test_ID == 'lub'), Load == 196)
 
 fake_friction <- fake_friction %>% 
   mutate(Test_ID = factor(Test_ID, labels = c('Friction', 'Nominal')),
@@ -222,7 +229,7 @@ The following figure depics spalling failures with increasing severity.
 
 
 fake_spalling <- formated_files %>% 
-  filter((Test_ID == 'train' | Test_ID == 'point'), Load == 20) 
+  filter((Test_ID == 'train' | Test_ID == 'point'), Load == 196) 
   
   
 fake_spalling <- fake_spalling %>% 

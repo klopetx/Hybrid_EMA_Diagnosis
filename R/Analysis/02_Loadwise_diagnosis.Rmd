@@ -611,9 +611,13 @@ combine_loadwise_results(final_features_20_chronology, final_features_40_chronol
 
 ```{r }
 
+names(loadwise_results_kappa) <- c('196', '392', '-392', 'Test')
+
+names(loadwise_results_acc) <- c('196', '392', '-392', 'Test')
+
 diag_final_f_loadwise_acc <- loadwise_results_acc %>% 
-                                tidyr::gather(., key = 'Load [Kgf]', value = 'Accuracy', -Test ) %>%  
-                                ggplot(., aes(x = Test, y = Accuracy, fill = `Load [Kgf]`)) + 
+                                tidyr::gather(., key = 'Load [N]', value = 'Accuracy', -Test ) %>%  
+                                ggplot(., aes(x = Test, y = Accuracy, fill = `Load [N]`)) + 
                                   geom_boxplot() +
                                   xlab('') + 
                                   theme_minimal() +
@@ -625,8 +629,8 @@ diag_final_f_loadwise_acc <- loadwise_results_acc %>%
 diag_final_f_loadwise_acc 
 
 diag_final_f_loadwise_kappa <- loadwise_results_kappa %>% 
-                                tidyr::gather(., key = 'Load [Kgf]', value = 'Kappa', -Test ) %>%  
-                                ggplot(., aes(x = Test, y = Kappa, fill = `Load [Kgf]`)) + 
+                                tidyr::gather(., key = 'Load [N]', value = 'Kappa', -Test ) %>%  
+                                ggplot(., aes(x = Test, y = Kappa, fill = `Load [N]`)) + 
                                   geom_boxplot() +
                                   xlab('') + 
                                   theme_minimal() +

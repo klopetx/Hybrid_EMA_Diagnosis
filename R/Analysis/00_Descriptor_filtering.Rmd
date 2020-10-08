@@ -170,6 +170,13 @@ feat_fitering_metrics   <-  memory %>%
 
 feat_fitering_metrics
 
+ cowplot::save_plot(plot = feat_fitering_metrics , 
+                     filename = paste0(here::here('figures'), '/', 'removal_metrics', '.pdf' ),
+                     dpi = 450,
+                     base_aspect_ratio = 1.618,
+                     bg= 'transparent'
+                     ) 
+
 ```
 
 
